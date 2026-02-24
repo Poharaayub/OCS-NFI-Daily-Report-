@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCS NFI Daily Report - Photos Only PDF</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .m3-card {
+            background-color: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .m3-input {
+            background-color: #dbeafe;
+            border-radius: 12px 12px 0 0;
+            border-bottom: 1px solid #1e40af;
+            transition: all 0.2s ease;
+            color: #1e3a8a;
+        }
+        .m3-input:focus {
+            background-color: #bfdbfe;
+            border-bottom: 2px solid #2563eb;
+            outline: none;
+        }
+        .m3-input::placeholder {
+            color: #60a5fa;
+        }
+        .m3-button-primary {
+            background-color: #005fb8;
+            color: white;
+            border-radius: 100px;
+            transition: transform 0.1s active;
+        }
+        .m3-button-primary:active {
+            transform: scale(0.98);
+        }
+        .photo-container {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid #dbeafe;
+            aspect-ratio: 1/1;
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #005fb8;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-40">
+    <header class="p-6">
+        <div class="flex flex-col items-center text-center space-y-2">
+            <div class="bg-blue-100 p-4 rounded-3xl text-blue-700 shadow-sm">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-black text-gray-900 tracking-tight">OCS NFI Daily Report</h1>
+                <p class="text-sm font-medium text-blue-600">Sistem Pelaporan Digital</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="px-4 space-y-6 max-w-md mx-auto">
+        <!-- Input data tetap ada untuk penamaan file PDF -->
+        <section class="m3-card p-6 space-y-4">
+            <div class="space-y-4">
+                <div class="relative">
+                    <label class="block text-xs font-bold text-blue-800 mb-1 ml-1 uppercase tracking-wider">Nama Pekerjaan</label>
+                    <input type="text" id="jobName" class="m3-input w-full p-3 text-sm" placeholder="Misal: Cleaning Service Area A">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-blue-800 mb-1 ml-1 uppercase tracking-wider">Tanggal Kerja</label>
+                        <input type="date" id="reportDate" class="m3-input w-full p-3 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-blue-800 mb-1 ml-1 uppercase tracking-wider">Shift</label>
+                        <select id="shift" class="m3-input w-full p-3 text-sm h-[46px]">
+                            <option value="Pagi">Pagi</option>
+                            <option value="Siang">Siang</option>
+                            <option value="Malam">Malam</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="m3-card p-6 space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-sm font-bold text-blue-800 uppercase tracking-widest">Dokumentasi</h2>
+                <div class="flex items-center space-x-2">
+                    <button onclick="clearAllPhotos()" id="btnClearAll" class="hidden text-[10px] font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full uppercase border border-red-100">Hapus Semua</button>
+                    <span id="photoCount" class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">0 Foto</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <label class="flex flex-col items-center justify-center py-5 bg-blue-50 border border-blue-100 rounded-3xl cursor-pointer hover:bg-blue-100 transition-colors">
+                    <svg class="w-8 h-8 text-blue-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span class="text-[10px] font-bold text-blue-700 uppercase">Kamera</span>
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+                </label>
+
+                <label class="flex flex-col items-center justify-center py-5 bg-gray-50 border border-gray-100 rounded-3xl cursor-pointer hover:bg-gray-100 transition-colors">
+                    <svg class="w-8 h-8 text-gray-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span class="text-[10px] font-bold text-gray-700 uppercase">Galeri</span>
+                    <input type="file" id="galleryInput" accept="image/*" multiple class="hidden">
+                </label>
+            </div>
+
+            <div id="loadingOverlay" class="hidden flex items-center justify-center p-4 bg-blue-50 rounded-2xl border border-blue-100 animate-pulse">
+                <span class="loader mr-3"></span>
+                <span id="loadingMsg" class="text-xs font-bold text-blue-700 uppercase">Memproses foto...</span>
+            </div>
+
+            <div id="photoGrid" class="grid grid-cols-3 gap-2"></div>
+        </section>
+    </main>
+
+    <div class="fixed bottom-0 left-0 right-0 p-6 flex justify-center pointer-events-none z-50">
+        <button onclick="generatePDF()" id="btnSubmit" class="m3-button-primary pointer-events-auto px-8 py-4 shadow-2xl flex items-center space-x-3 max-w-xs w-full justify-center">
+            <span id="btnIcon">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+            </span>
+            <span id="btnText" class="font-bold tracking-wide uppercase">Bagikan Laporan</span>
+        </button>
+    </div>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+        const cameraInput = document.getElementById('cameraInput');
+        const galleryInput = document.getElementById('galleryInput');
+        const photoGrid = document.getElementById('photoGrid');
+        const photoCountDisplay = document.getElementById('photoCount');
+        const btnClearAll = document.getElementById('btnClearAll');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingMsg = document.getElementById('loadingMsg');
+        const reportDateInput = document.getElementById('reportDate');
+        
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        reportDateInput.value = new Date().toISOString().split('T')[0];
+        let capturedPhotos = [];
+
+        cameraInput.addEventListener('change', handleFiles);
+        galleryInput.addEventListener('change', handleFiles);
+
+        async function handleFiles(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.disabled = true;
+            loadingOverlay.classList.remove('hidden');
+            loadingMsg.innerText = `MEMPROSES ${files.length} FOTO...`;
+
+            const CHUNK_SIZE = 5;
+            for (let i = 0; i < files.length; i += CHUNK_SIZE) {
+                const chunk = files.slice(i, i + CHUNK_SIZE);
+                await Promise.all(chunk.map(file => processImage(file)));
+                loadingMsg.innerText = `MEMPROSES ${Math.min(i + CHUNK_SIZE, files.length)} / ${files.length} FOTO...`;
+            }
+            
+            e.target.value = '';
+            updatePhotoCount();
+            btnSubmit.disabled = false;
+            loadingOverlay.classList.add('hidden');
+        }
+
+        function updatePhotoCount() {
+            photoCountDisplay.innerText = `${capturedPhotos.length} Foto`;
+            if (capturedPhotos.length > 0) {
+                btnClearAll.classList.remove('hidden');
+            } else {
+                btnClearAll.classList.add('hidden');
+            }
+        }
+
+        function clearAllPhotos() {
+            if (capturedPhotos.length === 0) return;
+            const confirmClear = confirm(`Hapus semua (${capturedPhotos.length}) foto dari daftar?`);
+            if (confirmClear) {
+                capturedPhotos = [];
+                photoGrid.innerHTML = '';
+                updatePhotoCount();
+                cameraInput.value = '';
+                galleryInput.value = '';
+            }
+        }
+
+        function processImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const MAX_SIZE = 1000; 
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                        } else {
+                            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        const now = new Date();
+                        const stampText = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+                        const fontSize = Math.floor(width / 22);
+                        ctx.font = `bold ${fontSize}px Roboto, Arial, sans-serif`;
+                        ctx.fillStyle = "#00ff00";
+                        ctx.textAlign = "center";
+                        ctx.strokeStyle = "black";
+                        ctx.lineWidth = Math.floor(fontSize / 8);
+                        ctx.strokeText(stampText, width / 2, height - (fontSize * 0.8));
+                        ctx.fillText(stampText, width / 2, height - (fontSize * 0.8));
+                        
+                        const stampedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                        const photoObj = { data: stampedDataUrl, ratio: width / height };
+                        capturedPhotos.unshift(photoObj);
+                        
+                        const div = document.createElement('div');
+                        div.className = 'photo-container shadow-sm';
+                        const photoId = 'photo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                        div.id = photoId;
+                        div.innerHTML = `
+                            <img src="${stampedDataUrl}" class="w-full h-full object-cover">
+                            <button onclick="removePhoto('${photoId}')" class="absolute top-1 right-1 bg-red-600/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">×</button>
+                        `;
+                        
+                        photoGrid.prepend(div);
+                        resolve();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        window.removePhoto = function(photoId) {
+            const container = document.getElementById(photoId);
+            if (!container) return;
+            const index = Array.from(photoGrid.children).indexOf(container);
+            if (index !== -1) {
+                capturedPhotos.splice(index, 1);
+                container.remove();
+                updatePhotoCount();
+            }
+        };
+
+        async function generatePDF() {
+            const btn = document.getElementById('btnSubmit');
+            const job = document.getElementById('jobName').value || 'Pekerjaan';
+            const shift = document.getElementById('shift').value;
+            const dateVal = reportDateInput.value;
+
+            if (capturedPhotos.length === 0) return alert("Pilih foto terlebih dahulu!");
+
+            btn.disabled = true;
+            const originalBtnText = document.getElementById('btnText').innerText;
+            document.getElementById('btnText').innerText = "GENERATING PDF...";
+
+            try {
+                // PDF disetel tanpa halaman detail di awal
+                const doc = new jsPDF({ compress: true });
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                
+                const dObj = new Date(dateVal);
+                const dayName = days[dObj.getDay()];
+                const dateFileName = `${dObj.getDate()}${months[dObj.getMonth()].substring(0,3)}${dObj.getFullYear()}`;
+
+                // Langsung masukkan foto ke halaman pertama dan seterusnya
+                for (let i = 0; i < capturedPhotos.length; i++) {
+                    // Jika bukan iterasi pertama, tambah halaman baru
+                    if (i > 0) doc.addPage();
+                    
+                    const photo = capturedPhotos[i];
+                    const margin = 5;
+                    const maxW = pageWidth - (margin * 2);
+                    const maxH = pageHeight - (margin * 2);
+                    
+                    let dW = maxW;
+                    let dH = dW / photo.ratio;
+                    
+                    if (dH > maxH) {
+                        dH = maxH;
+                        dW = dH * photo.ratio;
+                    }
+
+                    doc.addImage(photo.data, 'JPEG', (pageWidth - dW) / 2, (pageHeight - dH) / 2, dW, dH, undefined, 'FAST');
+                    
+                    // Nomor halaman di pojok bawah
+                    doc.setFontSize(8);
+                    doc.setTextColor(180, 180, 180);
+                    doc.text(`${i + 1}`, pageWidth - 10, pageHeight - 5);
+                }
+
+                // Penamaan File tetap menggunakan info pekerjaan
+                const now = new Date();
+                const hhmm = `${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}`;
+                const cleanJob = job.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
+                const fileName = `${cleanJob}_${dayName}_${dateFileName}_${hhmm}_${shift}.pdf`;
+                
+                const pdfBlob = doc.output('blob');
+                const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+                if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                    await navigator.share({ files: [pdfFile], title: 'OCS Photos' });
+                } else {
+                    doc.save(fileName);
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Gagal membuat PDF.");
+            } finally {
+                btn.disabled = false;
+                document.getElementById('btnText').innerText = originalBtnText;
+            }
+        }
+    </script>
+</body>
+</html>
+
