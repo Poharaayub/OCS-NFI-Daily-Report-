@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#141218">
+    <title>OCS NFI Daily Report - Speed Optimized</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        html {
+            -webkit-text-size-adjust: 100%;
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+            height: 100%;
+            width: 100%;
+            overflow-x: hidden;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        button, [role="button"], input, select {
+            touch-action: manipulation;
+        }
+        .safe-top {
+            padding-top: max(0.75rem, env(safe-area-inset-top));
+        }
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .m3-card {
+            background-color: #1c1b1f; 
+            border-radius: 24px;
+        }
+        .m3-input {
+            background-color: #2b2930;
+            border-bottom: 2px solid #938f99;
+            border-radius: 4px 4px 0 0;
+            font-size: 16px !important; 
+        }
+        select.m3-input {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d0bcff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 18px;
+            padding-right: 36px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        select.m3-input:disabled {
+            opacity: 0.45;
+        }
+        select.m3-input option {
+            background-color: #2b2930;
+            color: #e6e1e5;
+            white-space: normal;
+        }
+        .m3-input:read-only {
+            opacity: 0.6;
+        }
+        .image-card {
+            aspect-ratio: 1/1;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            background-color: #2b2930;
+        }
+        .image-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #loadingOverlay {
+            display: none;
+            background-color: rgba(20, 18, 24, 0.9);
+            backdrop-filter: blur(8px);
+        }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+            gap: 8px;
+        }
+        @media (min-width: 380px) {
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+        }
+        @media (min-width: 480px) {
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 12px;
+            }
+        }
+        .fab-button {
+            position: fixed;
+            bottom: max(16px, env(safe-area-inset-bottom));
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #d0bcff;
+            color: #381e72;
+            z-index: 50;
+            transition: transform 0.2s;
+        }
+        @media (min-width: 480px) {
+            .fab-button {
+                bottom: max(24px, env(safe-area-inset-bottom));
+                right: 24px;
+                width: 64px;
+                height: 64px;
+                border-radius: 20px;
+            }
+        }
+        .fab-hide { transform: scale(0); opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body class="bg-[#141218] text-[#e6e1e5] min-h-screen flex flex-col">
+
+    <header class="safe-top sticky top-0 z-30 bg-[#1c1b1f]/95 backdrop-blur-xl px-3 sm:px-4 py-3 flex items-center justify-between gap-2 border-b border-[#49454f]">
+        <div class="flex flex-col min-w-0">
+            <h1 class="text-sm sm:text-lg font-medium tracking-tight truncate">OCS NFI Daily Report</h1>
+            <span id="headerAuthor" class="text-[9px] sm:text-[10px] text-[#d0bcff] font-bold uppercase tracking-widest truncate">by Pohara Ayub</span>
+        </div>
+        <div class="bg-[#2b2930] px-2.5 sm:px-3 py-1.5 rounded-full border border-[#49454f] shrink-0">
+            <select id="qualitySelect" class="bg-transparent text-[11px] sm:text-xs text-[#d0bcff] font-bold outline-none max-w-[92px] sm:max-w-none">
+                <option value="0.3">Draft (Cepat)</option>
+                <option value="0.5" selected>Standar</option>
+                <option value="0.7">HD (Lambat)</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="flex-1 px-3 sm:px-4 py-4 space-y-5 sm:space-y-6 max-w-2xl mx-auto w-full pb-28 sm:pb-32">
+        <section class="m3-card p-4 sm:p-5 border border-[#49454f]/50 shadow-lg">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div class="space-y-1">
+                    <label class="text-[9px] text-[#938f99] uppercase font-bold">Dilaporkan oleh</label>
+                    <input type="text" id="globalReporter" value="Pohara Ayub" placeholder="Dilaporkan oleh..." class="m3-input w-full px-3 py-2.5 text-sm text-[#e6e1e5]">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] text-[#938f99] uppercase font-bold">Tanggal</label>
+                    <input type="date" id="globalJobDate" class="m3-input w-full px-3 py-2.5 text-sm text-[#e6e1e5]">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] text-[#938f99] uppercase font-bold">Shift</label>
+                    <select id="globalJobShift" class="m3-input w-full px-3 py-2.5 text-sm text-[#e6e1e5]">
+                        <option value="Shift pagi">Shift pagi</option>
+                        <option value="Shift siang">Shift siang</option>
+                        <option value="Shift malam">Shift malam</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="m3-card p-4 sm:p-5 border border-[#49454f]">
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <label class="text-[9px] text-[#938f99] uppercase font-bold">Nama Pekerjaan</label>
+                    <input type="text" id="tempJobName" placeholder="Nama Pekerjaan..." class="m3-input w-full px-4 py-3 text-sm">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] text-[#938f99] uppercase font-bold">Area</label>
+                    <input type="text" id="tempArea" placeholder="Area..." class="m3-input w-full px-4 py-3 text-sm">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] text-[#938f99] uppercase font-bold">Member</label>
+                    <input type="text" id="tempMembers" placeholder="Nama Member..." class="m3-input w-full px-4 py-3 text-sm">
+                </div>
+                <button id="addJobBtn" class="w-full bg-[#d0bcff] text-[#381e72] py-4 rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-transform disabled:opacity-40">
+                    Tambah Pekerjaan
+                </button>
+            </div>
+        </section>
+
+        <div id="clearAllRow" class="hidden justify-end">
+            <button id="clearAllBtn" class="flex items-center gap-1.5 px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#ffb4ab] bg-[#ffb4ab]/10 rounded-full hover:bg-[#ffb4ab]/20 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Hapus Semua Pekerjaan
+            </button>
+        </div>
+
+        <div id="jobsContainer" class="space-y-6"></div>
+
+        <div id="emptyState" class="flex flex-col items-center py-12 text-[#49454f]">
+            <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <p class="text-xs uppercase tracking-widest">Siap menambahkan foto</p>
+        </div>
+    </main>
+
+    <!-- Tombol Share -->
+    <button id="shareBtn" class="fab-button fab-hide shadow-2xl" title="Bagikan Laporan PDF">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+    </button>
+
+    <!-- Input File untuk Galeri dan Input Khusus Kamera -->
+    <input type="file" id="globalFileInput" class="hidden" accept="image/*" multiple>
+    <input type="file" id="globalCameraInput" class="hidden" accept="image/*" capture="environment">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center text-center">
+        <div class="w-10 h-10 border-4 border-[#d0bcff] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <h3 id="loadingText" class="text-[#e6e1e5] font-medium tracking-wide">Memproses Laporan...</h3>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus Pekerjaan -->
+    <div id="deleteModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div class="m3-card p-5 sm:p-6 border border-[#49454f] max-w-sm w-full space-y-4 shadow-2xl animate-fade-in max-h-[85vh] overflow-y-auto">
+            <h3 class="text-base font-bold text-[#e6e1e5]">Hapus Pekerjaan?</h3>
+            <p id="deleteModalMessage" class="text-xs text-[#938f99] leading-relaxed">Apakah Anda yakin ingin menghapus grup pekerjaan ini? Semua foto di dalamnya akan ikut terhapus.</p>
+            <div class="flex justify-end gap-3 pt-2">
+                <button id="cancelDeleteBtn" class="px-4 py-2.5 text-xs font-bold text-[#d0bcff] hover:bg-[#d0bcff]/10 rounded-full transition-colors">BATAL</button>
+                <button id="confirmDeleteBtn" class="px-4 py-2.5 text-xs font-bold text-[#381e72] bg-[#ffb4ab] hover:bg-[#ffb4ab]/80 rounded-full transition-colors">HAPUS</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Nama File PDF -->
+    <div id="fileNameModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div class="m3-card p-5 sm:p-6 border border-[#49454f] max-w-sm w-full space-y-4 shadow-2xl animate-fade-in max-h-[85vh] overflow-y-auto">
+            <h3 class="text-base font-bold text-[#e6e1e5]">Nama File PDF</h3>
+            <p class="text-xs text-[#938f99] leading-relaxed">Ubah nama file jika perlu sebelum laporan dibuat.</p>
+            <div class="space-y-1">
+                <label class="text-[9px] text-[#938f99] uppercase font-bold">Nama File (.pdf)</label>
+                <input type="text" id="pdfFileNameInput" class="m3-input w-full px-3 py-2.5 text-sm text-[#e6e1e5]">
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button id="cancelFileNameBtn" class="px-4 py-2.5 text-xs font-bold text-[#d0bcff] hover:bg-[#d0bcff]/10 rounded-full transition-colors">BATAL</button>
+                <button id="confirmFileNameBtn" class="px-4 py-2.5 text-xs font-bold text-[#381e72] bg-[#d0bcff] hover:bg-[#d0bcff]/80 rounded-full transition-colors">BUAT PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+        const jobsContainer = document.getElementById('jobsContainer');
+        const clearAllRow = document.getElementById('clearAllRow');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const emptyState = document.getElementById('emptyState');
+        const shareBtn = document.getElementById('shareBtn');
+        const addJobBtn = document.getElementById('addJobBtn');
+        const globalFileInput = document.getElementById('globalFileInput');
+        const globalCameraInput = document.getElementById('globalCameraInput');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const globalReporterInput = document.getElementById('globalReporter');
+        const headerAuthor = document.getElementById('headerAuthor');
+
+        // Element Modal Konfirmasi Hapus
+        const deleteModal = document.getElementById('deleteModal');
+        const deleteModalMessage = document.getElementById('deleteModalMessage');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+        let jobs = [];
+        let currentJobId = null;
+        let jobToDeleteId = null;
+        let deleteAllMode = false;
+
+        const tempJobName = document.getElementById('tempJobName');
+        const tempArea = document.getElementById('tempArea');
+        const tempMembers = document.getElementById('tempMembers');
+
+        document.getElementById('globalJobDate').valueAsDate = new Date();
+
+        globalReporterInput.addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            headerAuthor.textContent = val ? `by ${val}` : 'by Pohara Ayub';
+        });
+
+        function getIndonesianDay(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const d = new Date(parts[0], parts[1] - 1, parts[2]);
+                const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                return days[d.getDay()];
+            }
+            return '';
+        }
+
+        function formatIndonesianDate(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                const monthIdx = parseInt(parts[1], 10) - 1;
+                if (months[monthIdx]) {
+                    return `${parseInt(parts[2], 10)} ${months[monthIdx]} ${parts[0]}`;
+                }
+            }
+            return dateStr;
+        }
+
+        addJobBtn.onclick = () => {
+            const name = tempJobName.value.trim();
+            if (!name) return;
+
+            jobs.push({
+                id: 'j-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                name,
+                area: tempArea.value.trim() || '-',
+                members: tempMembers.value.trim() || '-',
+                images: []
+            });
+
+            tempJobName.value = '';
+            tempArea.value = '';
+            tempMembers.value = '';
+            render();
+        };
+
+        function render() {
+            emptyState.style.display = jobs.length ? 'none' : 'flex';
+            shareBtn.classList.toggle('fab-hide', !jobs.some(j => j.images.length));
+            clearAllRow.classList.toggle('hidden', jobs.length === 0);
+            clearAllRow.classList.toggle('flex', jobs.length > 0);
+            
+            jobsContainer.innerHTML = jobs.map(job => `
+                <div class="m3-card overflow-hidden border border-[#49454f]/30">
+                    <div class="p-3 sm:p-4 bg-[#2b2930]/30 border-b border-[#49454f]/20 flex flex-wrap gap-y-2 justify-between items-center">
+                        <div class="pr-2 flex-1 min-w-[140px]">
+                            <input type="text" value="${job.name.replace(/"/g, '&quot;')}" oninput="updateJobName('${job.id}', this.value)" class="font-bold text-[#d0bcff] text-xs sm:text-sm leading-tight bg-transparent border-b border-transparent focus:border-[#d0bcff]/50 outline-none w-full px-0 py-0.5" title="Ketuk untuk edit nama pekerjaan">
+                            <p class="text-[10px] text-[#938f99] tracking-tight mt-0.5">${job.area} | Member: ${job.members}</p>
+                        </div>
+                        <div class="flex gap-1.5 sm:gap-2 shrink-0">
+                            <button onclick="openCamera('${job.id}')" class="p-2.5 text-[#a8c7fa] bg-[#a8c7fa]/10 hover:bg-[#a8c7fa]/20 rounded-full transition-colors" title="Kamera Langsung">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            </button>
+                            <button onclick="upload('${job.id}')" class="p-2.5 text-[#d0bcff] bg-[#d0bcff]/10 hover:bg-[#d0bcff]/20 rounded-full transition-colors" title="Pilih dari Galeri">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            </button>
+                            <button onclick="delJob('${job.id}')" class="p-2.5 text-[#ffb4ab] bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20 rounded-full transition-colors" title="Hapus Pekerjaan">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-2.5 sm:p-3 photo-grid">
+                        ${job.images.map(img => `
+                            <div class="image-card group">
+                                <img src="${img.src}">
+                                <button onclick="delImg('${job.id}','${img.id}')" class="absolute top-1 right-1 bg-black/60 p-2 rounded-full text-[#ffb4ab] opacity-80 hover:opacity-100 transition-opacity">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.openCamera = (id) => { currentJobId = id; globalCameraInput.click(); };
+        window.upload = (id) => { currentJobId = id; globalFileInput.click(); };
+        
+        window.delJob = (id) => { 
+            const job = jobs.find(j => j.id === id);
+            if (!job) return;
+            
+            deleteAllMode = false;
+            jobToDeleteId = id;
+            deleteModalMessage.textContent = `Apakah Anda yakin ingin menghapus "${job.name}"? Semua foto di dalamnya akan ikut terhapus.`;
+            deleteModal.classList.remove('hidden');
+        };
+
+        clearAllBtn.onclick = () => {
+            if (!jobs.length) return;
+            deleteAllMode = true;
+            jobToDeleteId = null;
+            deleteModalMessage.textContent = `Apakah Anda yakin ingin menghapus SEMUA (${jobs.length}) grup pekerjaan beserta seluruh fotonya? Tindakan ini tidak bisa dibatalkan.`;
+            deleteModal.classList.remove('hidden');
+        };
+
+        cancelDeleteBtn.onclick = () => {
+            jobToDeleteId = null;
+            deleteAllMode = false;
+            deleteModal.classList.add('hidden');
+        };
+
+        confirmDeleteBtn.onclick = () => {
+            if (deleteAllMode) {
+                jobs = [];
+            } else if (jobToDeleteId) {
+                jobs = jobs.filter(j => j.id !== jobToDeleteId);
+            }
+            jobToDeleteId = null;
+            deleteAllMode = false;
+            deleteModal.classList.add('hidden');
+            render();
+        };
+
+        window.updateJobName = (id, value) => {
+            const job = jobs.find(j => j.id === id);
+            if (job) job.name = value;
+        };
+
+        window.delImg = (jid, iid) => { 
+            const j = jobs.find(x => x.id === jid);
+            if (j) {
+                j.images = j.images.filter(img => img.id !== iid);
+                render();
+            }
+        };
+
+        
+        // Fungsi untuk meng-generate teks stempel secara realtime
+        function getLiveStampText() {
+            const now = new Date();
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            const day = days[now.getDay()];
+            const date = String(now.getDate()).padStart(2, '0');
+            const month = months[now.getMonth()];
+            const year = now.getFullYear();
+            
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            return `${day}, ${date} ${month} ${year} ${hours}:${minutes}:${seconds}`;
+        }
+
+        async function processImage(file, quality, applyStamp) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const reader = new FileReader();
+                reader.onload = (e) => img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const max = 1200;
+                    let w = img.width, h = img.height;
+                    if (w > h && w > max) { h *= max/w; w = max; }
+                    else if (h > max) { w *= max/h; h = max; }
+                    
+                    canvas.width = w; 
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Gambar foto aslinya
+                    ctx.drawImage(img, 0, 0, w, h);
+                    
+                    // --- PENERAPAN STEMPEL WATERMARK (hanya untuk foto dari kamera langsung) ---
+                    if (applyStamp) {
+                        const stampText = getLiveStampText();
+                        
+                        // Kalkulasi ukuran font responsif berdasarkan lebar gambar agar proporsional
+                        const fontSize = Math.max(16, Math.floor(w * 0.035));
+                        ctx.font = `bold ${fontSize}px Roboto, sans-serif`;
+                        ctx.textAlign = 'center';
+                        
+                        // Posisi di tengah bawah, dengan sedikit padding
+                        const x = w / 2;
+                        const y = h - (fontSize * 0.8);
+                        
+                        // Menambahkan shadow tipis agar tulisan hijau tetap terbaca meskipun difoto di area hijau terang. 
+                        // Ini tidak berupa background kotak/blok hitam sesuai permintaan.
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                        ctx.shadowBlur = 3;
+                        ctx.shadowOffsetX = 1;
+                        ctx.shadowOffsetY = 1;
+                        
+                        // Warna Hijau Terang (#00FF00) sesuai instruksi
+                        ctx.fillStyle = '#00FF00'; 
+                        ctx.fillText(stampText, x, y);
+                        
+                        // Reset shadow
+                        ctx.shadowColor = 'transparent';
+                    }
+                    
+                    resolve({ 
+                        id: Math.random().toString(36).substr(2, 9), 
+                        src: canvas.toDataURL('image/jpeg', quality),
+                        w: w, h: h
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        const handleFiles = async (files, isCamera) => {
+            if (!files.length) return;
+            
+            loadingOverlay.style.display = 'flex';
+            document.getElementById('loadingText').textContent = isCamera ? "Memproses & Menambahkan Stempel..." : "Memproses Foto...";
+            
+            const quality = parseFloat(document.getElementById('qualitySelect').value);
+            const job = jobs.find(j => j.id === currentJobId);
+            
+            const processedImgs = await Promise.all(Array.from(files).map(f => processImage(f, quality, isCamera)));
+            job.images.push(...processedImgs);
+            
+            loadingOverlay.style.display = 'none';
+            render();
+        };
+
+        // Menangani input galeri (tanpa stempel) dan input kamera (dengan stempel)
+        globalFileInput.onchange = (e) => { handleFiles(e.target.files, false); e.target.value = ''; };
+        globalCameraInput.onchange = (e) => { handleFiles(e.target.files, true); e.target.value = ''; };
+
+        const fileNameModal = document.getElementById('fileNameModal');
+        const pdfFileNameInput = document.getElementById('pdfFileNameInput');
+        const cancelFileNameBtn = document.getElementById('cancelFileNameBtn');
+        const confirmFileNameBtn = document.getElementById('confirmFileNameBtn');
+
+        function sanitizeFileName(str) {
+            return str.replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+        }
+
+        shareBtn.onclick = () => {
+            const dateInput = document.getElementById('globalJobDate').value;
+            const shift = document.getElementById('globalJobShift').value;
+            const dayName = getIndonesianDay(dateInput);
+            const formattedDate = formatIndonesianDate(dateInput);
+            const includedJobNames = [...new Set(jobs.filter(j => j.images.length).map(j => j.name))];
+            const jobLabel = includedJobNames.length ? includedJobNames.join(' & ') : '-';
+            const suggestedName = sanitizeFileName(`${jobLabel}_${shift}_${dayName} ${formattedDate}`);
+            pdfFileNameInput.value = suggestedName;
+            fileNameModal.classList.remove('hidden');
+            pdfFileNameInput.focus();
+            pdfFileNameInput.select();
+        };
+
+        cancelFileNameBtn.onclick = () => {
+            fileNameModal.classList.add('hidden');
+        };
+
+        confirmFileNameBtn.onclick = () => {
+            const customName = pdfFileNameInput.value.trim();
+            fileNameModal.classList.add('hidden');
+            generatePDF(customName);
+        };
+
+        async function generatePDF(customFileName) {
+            loadingOverlay.style.display = 'flex';
+            document.getElementById('loadingText').textContent = "Menyusun Laporan PDF...";
+            
+            const pdf = new jsPDF('p', 'mm', 'a4', true);
+            const reporter = globalReporterInput.value.trim() || 'Pohara Ayub';
+            const dateInput = document.getElementById('globalJobDate').value;
+            const shift = document.getElementById('globalJobShift').value;
+            const dayName = getIndonesianDay(dateInput);
+            const formattedDate = formatIndonesianDate(dateInput);
+            
+            const pw = pdf.internal.pageSize.getWidth();
+            const ph = pdf.internal.pageSize.getHeight();
+            const margin = 8;
+            let first = true;
+
+            for (const job of jobs) {
+                if (!job.images.length) continue;
+                
+                for (let i = 0; i < job.images.length; i++) {
+                    if (!first) pdf.addPage();
+                    first = false;
+
+                    let yPos = margin;
+                    let availH = ph - (margin * 2);
+
+                    if (i === 0) {
+                        pdf.setTextColor(20);
+                        pdf.setFontSize(20);
+                        pdf.setFont('helvetica', 'bold');
+                        
+                        const titleLines = pdf.splitTextToSize(job.name, pw - (margin * 2));
+                        pdf.text(titleLines, margin, yPos + 6);
+                        
+                        const hTitle = (titleLines.length * 7.5);
+                        pdf.setFontSize(11);
+                        pdf.setFont('helvetica', 'normal');
+                        pdf.setTextColor(60);
+
+                        pdf.text(`Member: ${job.members}`, margin, yPos + hTitle + 5);
+                        pdf.text(`${dayName}, ${formattedDate} | ${shift} | Dilaporkan oleh: ${reporter}`, margin, yPos + hTitle + 11);
+                        
+                        pdf.setDrawColor(200);
+                        pdf.line(margin, yPos + hTitle + 15, pw - margin, yPos + hTitle + 15);
+                        
+                        const headerH = hTitle + 18;
+                        yPos += headerH;
+                        availH -= headerH;
+                    }
+
+                    const img = job.images[i];
+                    const scale = Math.min((pw - (margin * 2)) / img.w, availH / img.h);
+                    const dw = img.w * scale;
+                    const dh = img.h * scale;
+                    const dx = (pw - dw) / 2;
+                    const dy = yPos + (availH - dh) / 2;
+
+                    pdf.addImage(img.src, 'JPEG', dx, dy, dw, dh, undefined, 'FAST');
+                }
+            }
+
+            const includedJobNames = [...new Set(jobs.filter(j => j.images.length).map(j => j.name))];
+            const jobLabel = includedJobNames.length ? includedJobNames.join(' & ') : '-';
+            const fallbackName = sanitizeFileName(`${jobLabel}_${shift}_${dayName} ${formattedDate}`);
+            let baseName = sanitizeFileName(customFileName || '') || fallbackName;
+            baseName = baseName.replace(/\.pdf$/i, '');
+            const fileName = baseName + '.pdf';
+            
+            const pdfBlob = pdf.output('blob');
+            const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+            loadingOverlay.style.display = 'none';
+
+            if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                try {
+                    await navigator.share({
+                        files: [pdfFile],
+                        title: fileName,
+                        text: `OCS NFI Daily Report - ${dayName}, ${formattedDate}`
+                    });
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        pdf.save(fileName);
+                    }
+                }
+            } else {
+                pdf.save(fileName);
+            }
+        }
+    </script>
+</body>
+</html>
